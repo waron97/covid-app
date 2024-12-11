@@ -3,6 +3,14 @@ import os
 from flaskr.celery_maker import celery_init_app
 from flaskr import tasks
 from celery.result import AsyncResult
+from flaskr import db
+
+if os.environ.get("INIT_DB") == "True":
+    # Only set for WSGI/Flask, not for celery entrypoint
+    db.init_db()
+    db.run_data_import()
+
+print("\n########### SERVER START ###########\n")
 
 app = Flask(__name__)
 app.config.from_mapping(

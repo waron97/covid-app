@@ -9,6 +9,7 @@ function runDocker() {
 function runBe() {
     cd ../src/back-end
     source venv/bin/activate
+    export INIT_DB=True
     flask --app app --debug run & celery -A app.celery_app worker --loglevel INFO
 }
 
