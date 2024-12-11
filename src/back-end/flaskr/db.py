@@ -36,7 +36,9 @@ def init_db():
                 case_total INTEGER NOT NULL
             )
         """,
-        
+        """
+            CREATE INDEX IF NOT EXISTS date_asc ON state_data ( date ASC )
+        """,
     ]
     
     print("Tables created")
