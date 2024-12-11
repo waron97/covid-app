@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "devops"
+		},
+		{
+			"path": "src/back-end"
+		},
+		{
+			"path": "src/front-end"
+		}
+	],
+	"settings": {}
+}
