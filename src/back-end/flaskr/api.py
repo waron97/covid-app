@@ -1,6 +1,7 @@
 from flask import Blueprint, request
 from flaskr.util import parse_date
-from flaskr import db
+from flaskr import db, tasks
+from celery.result import AsyncResult
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -51,4 +52,21 @@ def get_valid_intervals():
     return {
         "start": start.strftime("%Y-%m-%d"),
         "end": end.strftime("%Y-%m-%d")
+    }
+
+@bp.get("/export")
+def export_state_data_at_date():
+    date = parse_date(request.args.get("date"))
+    result = tasks.export_state_date_xlsx.delay(date)
+    return {
+        "task_id": result.id
+    }
+    
+@bp.get("/result/<id>")
+def task_result(id: str) -> dict[str, object]:
+    result = AsyncResult(id)
+    return {
+        "ready": result.ready(),
+        "successful": result.successful(),
+        "value": result.result if result.ready() else None,
     }
