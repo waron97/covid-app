@@ -1,11 +1,39 @@
 import flask
+from typing import Tuple
 import psycopg2
 import os
 import csv
 import time
 from tqdm import tqdm
 
+# Connection
+
+def try_get_conn():
+    try:
+        conn = psycopg2.connect(
+            database=os.environ.get("POSTGRES_DB"),
+            host=os.environ.get("POSTGRES_URI"),
+            password=os.environ.get("POSTGRES_PASSWORD"),
+            user="postgres"
+        )
+        return conn
+    except:
+        return None
+
+def get_conn_g():
+    if "conn" not in flask.g:
+        conn = try_get_conn()
+        flask.g.conn = conn
+        return conn
+    return flask.g.conn
+
+# Startup
+
 def init_db():
+    """
+    Initializes the postgres database by creating the table
+    that receives the COVID-19 data, as well as the relevant indexes.
+    """
     print("\n########### INITDB ###########\n")
     # Wait for docker to spin up
     conn = None
@@ -41,6 +69,12 @@ def init_db():
         conn.commit()
         
 def run_data_import():
+    """
+    Import script for the COVID-19 into the `states_data` postgres table.
+    If the table is not empty, the import is assumed to have already run.
+    
+    This snippet is supposed to be run separately from the main application.
+    """
     print("\n########### DATA IMPORT ###########\n")
     conn = try_get_conn()
     covid_data_dir = os.environ.get("COVID_DATA_PATH") or ""
@@ -92,21 +126,30 @@ def run_data_import():
             
             print("Done")
             
-def try_get_conn():
-    try:
-        conn = psycopg2.connect(
-            database=os.environ.get("POSTGRES_DB"),
-            host=os.environ.get("POSTGRES_URI"),
-            password=os.environ.get("POSTGRES_PASSWORD"),
-            user="postgres"
-        )
-        return conn
-    except:
-        return None
+# Data logic
 
-def get_conn_g():
-    if "conn" not in flask.g:
-        conn = try_get_conn()
-        flask.g.conn = conn
-        return conn
-    return flask.g.conn
+def get_valid_date_interval(conn) -> Tuple[str, str]:
+    """
+    Fetches the earliest and latest dates which are available in the COVID-19 data.
+    Intended to be used as fallback values when the user requests out-of-range dates.
+    """
+    with conn.cursor() as c:
+        c.execute("""
+            (
+                SELECT date
+                FROM state_data
+                ORDER BY date ASC
+                LIMIT 1
+            )
+
+            UNION ALL
+
+            (
+                SELECT date
+                FROM state_data
+                ORDER BY date desc
+                LIMIT 1
+            )
+        """)
+        res = c.fetchall()
+        return (res[0][0], res[1][0])
