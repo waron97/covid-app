@@ -61,7 +61,7 @@ windows:
             - export $(sed 's/#.*//g' .env.development | xargs)
             - cd ../src/back-end
             - source venv/bin/activate
-            - export INIT_DB=True
+            - python startup.py
             - flask --app app --debug run
         - celery:
             - export $(sed 's/#.*//g' .env.development | xargs)

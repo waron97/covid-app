@@ -1,26 +1,18 @@
+import flask
 import psycopg2
 import os
 import csv
 import time
 from tqdm import tqdm
 
-conn = None
-
 def init_db():
     print("\n########### INITDB ###########\n")
-    global conn
     # Wait for docker to spin up
+    conn = None
     while not conn:
-        try:
-            conn = psycopg2.connect(
-                database=os.environ.get("POSTGRES_DB"),
-                host=os.environ.get("POSTGRES_URI"),
-                password=os.environ.get("POSTGRES_PASSWORD"),
-                user="postgres"
-            )
-        except:
-            time.sleep(1)
+        conn = try_get_conn() or time.sleep(1)
     
+    print("here")
     print("Connection established")
         
     commands = [
@@ -50,7 +42,7 @@ def init_db():
         
 def run_data_import():
     print("\n########### DATA IMPORT ###########\n")
-    global conn
+    conn = try_get_conn()
     covid_data_dir = os.environ.get("COVID_DATA_PATH") or ""
     csv_path = os.path.join(covid_data_dir, "dati-province", "dpc-covid19-ita-province.csv")
     
@@ -100,5 +92,21 @@ def run_data_import():
             
             print("Done")
             
-        
-            
+def try_get_conn():
+    try:
+        conn = psycopg2.connect(
+            database=os.environ.get("POSTGRES_DB"),
+            host=os.environ.get("POSTGRES_URI"),
+            password=os.environ.get("POSTGRES_PASSWORD"),
+            user="postgres"
+        )
+        return conn
+    except:
+        return None
+
+def get_conn_g():
+    if "conn" not in flask.g:
+        conn = try_get_conn()
+        flask.g.conn = conn
+        return conn
+    return flask.g.conn
