@@ -1,12 +1,14 @@
 from flask import Flask
 import os
 from flaskr.celery_maker import celery_init_app
-from flaskr import tasks, api
-from flaskr import db
+from flaskr import api
+from flask_cors import CORS
+
 
 print("\n########### SERVER START ###########\n")
 
 app = Flask(__name__)
+CORS(app)
 
 app.register_blueprint(api.bp)
 
