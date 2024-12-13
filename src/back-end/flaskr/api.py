@@ -2,6 +2,7 @@ from flask import Blueprint, request
 from flaskr.util import parse_date
 from flaskr import db, tasks
 from celery.result import AsyncResult
+from flaskr.util import box
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -11,17 +12,29 @@ def get_state_data_by_date():
     _, upper = db.get_valid_date_interval(conn)
     date = parse_date(request.args.get("date")) or upper
     command = """
-        SELECT 
-            TO_CHAR(date, 'YYYY-MM-DD'),
-            state_name,
-            region_name,
-            case_total
-        FROM state_data WHERE date = %s
+        SELECT * FROM (
+            SELECT 
+                *,
+                case_total - lag(case_total) OVER (PARTITION BY state_name, region_name ORDER BY date ASC) AS delta
+            FROM (
+                SELECT
+                    to_char(C.date, 'YYYY-MM-DD') as date, 
+                    S.state_name as state_name, 
+                    S.state_code as state_code,
+                    R.region_name as region_name,
+                    C.case_total as case_total
+                FROM covid_case_records AS C
+                FULL JOIN states AS S ON C.state_code = S.state_code
+                FULL JOIN regions AS R on S.region_code = R.region_code
+                WHERE C.date = %s OR C.date = %s::TIMESTAMP - INTERVAL '1 DAY'
+            )
+        )
+        WHERE date = %s
     """
     with conn.cursor() as c:
         d = date.strftime("%Y-%m-%d")
-        c.execute(command, (d,))
-        return c.fetchall()
+        c.execute(command, (d, d, d))
+        return box(c.fetchall(), ("date", "state_name", "state_code", "region_name", "case_total", "delta_day"))
     
 
 @bp.get("/regions")
@@ -31,18 +44,17 @@ def get_region_data_by_date():
     start = parse_date(request.args.get("start")) or lower
     end = parse_date(request.args.get("end")) or upper
     cmd = """
-        SELECT
-            to_char(date, 'YYYY-MM-DD'), 
-            region_name, 
-            SUM(case_total) 
-        FROM state_data
-        WHERE date >= %s AND date <= %s
-        GROUP BY date, region_name
-        ORDER BY date ASC, case_total DESC, region_name ASC;
+        SELECT to_char(C.date, 'YYYY-MM-DD'), R.region_name, SUM(C.case_total) AS case_total
+        FROM covid_case_records AS C
+        FULL JOIN states AS S ON C.state_code = S.state_code
+        FULL JOIN regions AS R on S.region_code = R.region_code
+        WHERE C.date >= %s AND C.date <= %s   
+        GROUP BY (C.date, R.region_name)
+        ORDER BY C.date ASC, case_total DESC, R.region_name ASC
     """
     with conn.cursor() as c:
         c.execute(cmd, (start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")))
-        return c.fetchall()
+        return box(c.fetchall(), ("date", "region_name", "case_total"))
     
 
 @bp.get("/interval")

@@ -40,25 +40,34 @@ def init_db():
     while not conn:
         conn = try_get_conn() or time.sleep(1)
     
-    print("here")
     print("Connection established")
         
     commands = [
         """
-            CREATE TABLE IF NOT EXISTS state_data (
-                id SERIAL PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS covid_case_records (
                 date DATE NOT NULL,
-                region_code VARCHAR(3) NOT NULL,
-                region_name VARCHAR(255) NOT NULL,
                 state_code VARCHAR(3) NOT NULL,
-                state_name VARCHAR(255) NOT NULL,
-                state_abbreviation VARCHAR(2) NOT NULL,
-                case_total INTEGER NOT NULL
+                case_total INTEGER NOT NULL,
+                CONSTRAINT covid_case_records_pkey PRIMARY KEY (date, state_code)
             )
         """,
         """
-            CREATE INDEX IF NOT EXISTS date_asc ON state_data ( date ASC )
+            CREATE TABLE IF NOT EXISTS regions (
+                region_code VARCHAR(3) PRIMARY KEY,
+                region_name VARCHAR(255) NOT NULL
+            )
         """,
+        """
+            CREATE TABLE IF NOT EXISTS states (
+                state_code VARCHAR(3) PRIMARY KEY,
+                state_name VARCHAR(255) NOT NULL,
+                state_abbreviation VARCHAR(2) NOT NULL,
+                region_code VARCHAR(3) NOT NULL REFERENCES regions (region_code)
+            )
+        """
+        # """
+        #     CREATE INDEX IF NOT EXISTS date_asc ON state_data ( date ASC )
+        # """,
     ]
     
     print("Tables created")
@@ -83,12 +92,19 @@ def run_data_import():
     if not covid_data_dir or not os.path.exists(csv_path):
         raise Exception("COVID_DATA_DIR is not set or does not exist")
     
+    with open(csv_path, "rbU") as f:
+        num_lines = sum(1 for _ in f)
+    
+    
     with conn.cursor() as c:
-        c.execute("SELECT COUNT(*) FROM state_data;")
+        # Check if all records are imported, maybe newer data is available
+        c.execute("SELECT COUNT(*) FROM covid_case_records;")
         count = c.fetchone()
-        if count[0] > 0:
-            print("Data table is not emtpy. Skipping.")
+        # -1 because headers are not imported
+        if count[0] >= num_lines - 1:
+            print("Found no new rows to import. Skipping...")
             return
+        
     
     with open(csv_path, "r") as f:
         reader = csv.reader(f, delimiter=",")
@@ -106,21 +122,50 @@ def run_data_import():
                 state_name = row[5]
                 state_abbr = row[6]
                 cases = row[9]
-                command = """
-                    INSERT INTO state_data (
-                        date,
-                        region_code,
-                        region_name,
-                        state_code,
-                        state_name,
-                        state_abbreviation,
-                        case_total    
-                    ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s
+                commands = [
+                    (
+                        """
+                        INSERT INTO regions (
+                                region_code,
+                                region_name
+                            ) VALUES (
+                                %s, %s
+                            )
+                            ON CONFLICT DO NOTHING
+                        """, 
+                        (reg_code, reg_name)
+                    ),
+                    (
+                        """
+                            INSERT INTO states (
+                                state_code,
+                                state_name,
+                                state_abbreviation,
+                                region_code
+                            ) VALUES (
+                                %s, %s, %s, %s
+                            )
+                            ON CONFLICT DO NOTHING
+                        """, 
+                        (state_code, state_name, state_abbr, reg_code)
+                    ),
+                    (
+                        """
+                            INSERT INTO covid_case_records (
+                                date,
+                                state_code,
+                                case_total    
+                            ) VALUES (
+                                %s, %s, %s
+                            )
+                            ON CONFLICT DO UPDATE
+                        """, 
+                        (date, state_code, cases)
                     )
-                """
+                ]
                 
-                c.execute(command, (date, reg_code, reg_name, state_code, state_name, state_abbr, cases))
+                for (command, args) in commands:
+                    c.execute(command, args)
             
             conn.commit()
             
@@ -137,7 +182,7 @@ def get_valid_date_interval(conn) -> Tuple[str, str]:
         c.execute("""
             (
                 SELECT date
-                FROM state_data
+                FROM covid_case_records
                 ORDER BY date ASC
                 LIMIT 1
             )
@@ -146,7 +191,7 @@ def get_valid_date_interval(conn) -> Tuple[str, str]:
 
             (
                 SELECT date
-                FROM state_data
+                FROM covid_case_records
                 ORDER BY date desc
                 LIMIT 1
             )
