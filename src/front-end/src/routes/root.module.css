@@ -1,0 +1,21 @@
+.layout {
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+}
+
+.menu {
+    flex: 1;
+    min-width: 0;
+}
+
+.footer {
+    text-align: center;
+}
+
+.content {
+    padding: 24px;
+}
