@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import { DownloadOutlined } from '@ant-design/icons';
+import useDataExport from '../../hooks/useDataExport';
 
 export const Route = createFileRoute('/_table/')({
   component: RouteComponent,
@@ -42,6 +43,11 @@ function RouteComponent() {
   // ---------------------------------
 
   const [date, setDate] = useState<dayjs.Dayjs | null>(null);
+
+  const excelExport = useDataExport({
+    date: date || dayjs(),
+    onReady: handleExcelDownloadReady,
+  });
 
   const intervalQuery = useQuery({
     queryKey: ['interval'],
@@ -115,6 +121,19 @@ function RouteComponent() {
   }, [intervalQuery.data]);
 
   // ---------------------------------
+  // Functions
+  // ---------------------------------
+
+  function handleExcelDownloadReady(link: string) {
+    const a = document.createElement('a');
+    a.href = link;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  // ---------------------------------
   // Render
   // ---------------------------------
 
@@ -147,7 +166,12 @@ function RouteComponent() {
             },
           ]}
         />
-        <Button type="primary">
+        <Button
+          type="primary"
+          htmlType="button"
+          onClick={excelExport.initExport}
+          loading={excelExport.loading}
+        >
           Esporta <DownloadOutlined />
         </Button>
       </Flex>
