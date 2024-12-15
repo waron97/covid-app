@@ -13,6 +13,8 @@ export const Route = createRootRoute({
 
 const queryClient = new QueryClient();
 
+console.log(window.location.pathname);
+
 function RootComponent() {
   const navigate = Route.useNavigate();
 
@@ -27,17 +29,17 @@ function RootComponent() {
               mode="horizontal"
               items={[
                 {
-                  key: 'table',
+                  key: '/',
                   label: 'Tabella',
                   onClick: () => navigate({ to: TableRoute.to }),
                 },
                 {
-                  key: 'chart',
+                  key: '/chart',
                   label: 'Grafico',
                   onClick: () => navigate({ to: ChartRoute.to }),
                 },
               ]}
-              defaultSelectedKeys={['table']}
+              defaultSelectedKeys={[window.location.pathname]}
             ></Menu>
           </Header>
           <Content className={styles.content}>

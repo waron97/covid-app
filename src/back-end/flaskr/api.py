@@ -43,6 +43,10 @@ def get_region_data_by_date():
     lower, upper = db.get_valid_date_interval(conn)
     start = parse_date(request.args.get("start")) or lower
     end = parse_date(request.args.get("end")) or upper
+    
+    if (start - end).days > 31:
+        return "Intervals longer than 31 days are not allowed", 400
+    
     cmd = """
         SELECT to_char(C.date, 'YYYY-MM-DD'), R.region_name, SUM(C.case_total) AS case_total
         FROM covid_case_records AS C

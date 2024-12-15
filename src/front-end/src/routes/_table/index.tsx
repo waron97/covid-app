@@ -140,7 +140,7 @@ function RouteComponent() {
   return (
     <div className={styles.root}>
       <Typography.Title>Visualizzazione tabellare</Typography.Title>
-      <Flex gap="small" style={{ marginBottom: 12 }}>
+      <Flex gap="small" style={{ marginBottom: 36 }}>
         <DatePicker
           style={{ minWidth: 200 }}
           value={date}
