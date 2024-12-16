@@ -92,7 +92,7 @@ def run_data_import():
     if not covid_data_dir or not os.path.exists(csv_path):
         raise Exception("COVID_DATA_DIR is not set or does not exist")
     
-    with open(csv_path, "rbU") as f:
+    with open(csv_path, "rb") as f:
         num_lines = sum(1 for _ in f)
     
     
@@ -158,7 +158,7 @@ def run_data_import():
                             ) VALUES (
                                 %s, %s, %s
                             )
-                            ON CONFLICT DO UPDATE
+                            ON CONFLICT DO NOTHING
                         """, 
                         (date, state_code, cases)
                     )

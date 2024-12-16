@@ -51,20 +51,13 @@ windows:
       # 'before' represents legacy functionality and will be deprecated in a future release, in favour of 'after'
       # synchronize: after
       panes:
-        - docker:
-            - docker compose --env-file ./.env.development -f ./docker/docker-compose.dev.yaml up --build
         - fe:
             - export $(sed 's/#.*//g' .env.development | xargs)
             - cd ../src/front-end
             - yarn run dev
+        - db:
+            - docker logs --follow covid-app-psql
         - be:
-            - export $(sed 's/#.*//g' .env.development | xargs)
-            - cd ../src/back-end
-            - source venv/bin/activate
-            - python startup.py
-            - flask --app app --debug run
+            - docker logs --follow covid-app-api
         - celery:
-            - export $(sed 's/#.*//g' .env.development | xargs)
-            - cd ../src/back-end
-            - source venv/bin/activate
-            - celery -A app.celery_app worker --loglevel INFO
+            - docker logs --follow covid-app-celery
