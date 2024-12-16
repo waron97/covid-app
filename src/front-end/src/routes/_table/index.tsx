@@ -18,7 +18,7 @@ export const Route = createFileRoute('/_table/')({
   component: RouteComponent,
 });
 
-type Record = {
+export type Record = {
   case_total: number;
   state_name: string;
   state_code: string;
