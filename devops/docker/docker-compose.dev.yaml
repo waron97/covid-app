@@ -80,18 +80,3 @@ services:
         - action: sync+restart
           path: ../../../covid-data:/usr/app/covid-data:ro
           target: /usr/app/covid-data
-  client:
-    build: ../../src/front-end
-    container_name: covid-app-client
-    restart: unless-stopped
-    volumes:
-      - ../nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certbot/www/:/var/www/certbot/:ro
-    ports:
-      - "8888:80"
-
-  certbot:
-    image: certbot/certbot:latest
-    volumes:
-      - ../certbot/www/:/var/www/certbot/:rw
-      - ../certbot/conf/:/etc/letsencrypt/:rw
