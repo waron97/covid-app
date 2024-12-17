@@ -3,12 +3,20 @@ import os
 from flaskr.celery_maker import celery_init_app
 from flaskr import api
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 
 print("\n########### SERVER START ###########\n")
 
 app = Flask(__name__)
 CORS(app)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per minute"],
+    storage_uri=os.environ.get("REDIS_URI"),
+)
 
 app.register_blueprint(api.bp)
 
