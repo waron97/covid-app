@@ -73,10 +73,15 @@ def get_valid_intervals():
 @bp.get("/export")
 def export_state_data_at_date():
     date = parse_date(request.args.get("date"))
-    result = tasks.export_state_date_xlsx.delay(date)
-    return {
-        "task_id": result.id
-    }
+    conn = db.get_conn_g()
+    lower, upper = db.get_valid_date_interval(conn)
+    if date and date >= lower and date <= upper:
+        result = tasks.export_state_date_xlsx.delay(date)
+        return {
+            "task_id": result.id
+        }
+    else:
+        return "Invalid date", 400
     
 @bp.get("/result/<id>")
 def task_result(id: str) -> dict[str, object]:
